@@ -1,0 +1,71 @@
+{% extends 'wiki/layout.html' %}
+
+{% block css %}
+{{ super() }}
+{{ stylesheet_tag('css/bootstrap-datepicker.min.css') }}
+{% endblock css %}
+
+{% block header %}
+Search
+{% endblock header %}
+
+{% block other_content %}
+<form method="POST">
+  {{ form.csrf_token }}
+  <div class="form-group">
+    <label for="inputSearch">Keywords</label>
+    {{ form.search(class_='form-control', id='inputSearch', placeholder='Search for...') }}
+  </div>
+  <div class="form-row">
+    <div class="form-group col-md-6">
+      <label for="inputDateFrom">From</label>
+      {{ form.start_date(class_='form-control', id='inputDateFrom', placeholder='MM/DD/YYYY') }}
+    </div>
+    <div class="form-group col-md-6">
+      <label for="inputDateTo">To</label>
+      {{ form.end_date(class_='form-control', id='inputDateTo', placeholder='MM/DD/YYYY') }}
+    </div>
+  </div>
+  {{ form.submit(class_='btn btn-primary', value='Search') }}
+</form>
+<br>
+
+{% if data %}
+<div id="search-result">
+  <h4>Search Results for <i>"{{ form.search.data }}"</i></h4>
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">Title</th>
+        <th scope="col">Edited By</th>
+        <th scope="col">Last Edit</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for wiki_page in data %}
+      <tr>
+        <th scope="row">{{ loop.index + number_per_page*(current_page_number-1) }}</th>
+        <td><a href="{{ url_for('wiki.page', wiki_page_id=wiki_page.id) }}">{{ wiki_page.title }}</a></td>
+        <td>{{ wiki_page.modified_by }}</td>
+        <td>{{ wiki_page.modified_on.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% macro my_url_for(page_number) -%}
+{{ url_for('wiki.search', search=form.search.data, page=page_number) }}
+{%- endmacro %}
+
+{% include 'wiki/pagination.html' %}
+{% endif %}
+<br><br><br><br><br><br><br><br>
+{% endblock other_content %}
+
+{% block js %}
+{{ super() }}
+{{ javascript_tag('js/bootstrap-datepicker.min.js') }}
+{{ javascript_tag('js/datepicker.js') }}
+{% endblock js %}

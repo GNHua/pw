@@ -1,0 +1,43 @@
+{% extends 'wiki/layout.html' %}
+
+{% block header %}
+Login Record
+{% endblock header %}
+
+{% block other_content %}
+{% macro my_url_for(page_number) -%}
+{{ url_for('admin.login_record', page=page_number) }}
+{%- endmacro %}
+
+{% include 'wiki/pagination.html' %}
+
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th scope="col">#</th>
+      <th scope="col">Username</th>
+      <th scope="col">IP adress</th>
+      <th scope="col">Browser</th>
+      <th scope="col">Platform</th>
+      <th scope="col">Time</th>
+      <th scope="col">Details</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for record in data %}
+    <tr>
+      <th scope="row">{{ loop.index + number_per_page*(current_page_number-1) }}</th>
+      <td>{{ record.username }}</td>
+      <td>{{ record.ip }}</td>
+      <td>{{ record.browser }}</td>
+      <td>{{ record.platform }}</td>
+      <td>{{ record.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+      <td>{{ record.details }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% include 'wiki/pagination.html' %}
+<br><br><br><br><br><br><br><br>
+{% endblock other_content %}

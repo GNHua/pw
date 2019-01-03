@@ -1,0 +1,82 @@
+{% extends 'wiki/layout.html' %}
+
+{% block header %}
+All Users
+{% endblock header %}
+
+{% block other_content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 class="h2">Current accounts</h1>
+  <div class="btn-toolbar mb-2 mb-md-0">
+    <button class="btn btn-sm btn-outline-success" data-toggle="collapse" data-target="#add-wiki-user" aria-expanded="false" aria-controls="add-wiki-user" id="btn-add-wiki-user">
+      Add new user
+    </button>
+  </div>
+</div>
+
+<div class="collapse" id="add-wiki-user" style="margin-bottom: 14px">
+  <div class="card card-body">
+    <form class="form-add-wiki-user" method="POST">
+      {{ form.csrf_token }}
+      <div style="max-width:300px;">
+        <div class="form-group">
+        {{ form.username(class_='form-control', placeholder='Username') }}
+        </div>
+        <div class="form-group">
+        {{ form.email(class_='form-control', placeholder='Email') }}
+        </div>
+        <div class="form-group">
+        {{ form.password(class_='form-control', placeholder='Password') }}
+        </div>
+        <div class="form-group form-check">
+        {{ form.is_admin(class_='form-check-input') }}
+        {{ form.is_admin.label }}
+        </div>
+        <div class="form-group">
+        {{ form.submit(class_='btn btn-primary col-12') }}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<table id="current-wiki-user" class="table">
+  <thead>
+    <tr>
+      <th scope="col">#</th>
+      <th scope="col">Username</th>
+      <th scope="col">Email</th>
+      <th scope="col">Access</th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for wiki_user in all_wiki_users %}
+    <tr>
+      <th scope="row">{{ loop.index }}</th>
+      <td>{{ wiki_user.name }}</td>
+      <td>{{ wiki_user.email }}</td>
+      {% if wiki_user.is_admin %}
+      <td>Admin</td>
+      {% else %}
+      <td>User</td>
+      {% endif %}
+      <td><a href="{{ url_for('admin.manager_user', wiki_user_id=wiki_user.id) }}" class="btn btn-sm btn-warning " role="button" aria-pressed="true">manage</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock other_content %}
+
+{% block js %}
+{{ super() }}
+<script type="text/javascript">
+  $('#btn-add-wiki-user').on('click', function() {
+    if($(this).text() == 'Add new user') {
+      $(this).text('Hide');
+    } else {
+      $(this).text('Add new user');
+    }
+  });
+</script>
+{% endblock js %}

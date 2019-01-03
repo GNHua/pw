@@ -1,0 +1,41 @@
+
+{% extends "layout.html" %}
+
+{% block css %}
+{{ stylesheet_tag('css/dashboard.css') }}
+{{ stylesheet_tag('css/toggle_switch.css') }}
+{% endblock css %}
+
+{% block body %}
+<nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+  <span class="navbar-brand">
+    {% block header %}{% endblock header %}
+  </span>
+</nav>
+
+<div class="container-fluid">
+  <div class="row">
+    {% include 'super_admin/sidebar.html' %}
+
+    <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="row">
+        <div class="col-md-12">
+          {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            <a class="close" title="Close" href="#" data-dismiss="alert">&times;</a>
+            {{message}}
+          </div><!-- end .alert -->
+          {% endfor %}
+        </div><!-- end col-md -->
+      </div><!-- end row -->
+      {% endif %}
+      {% endwith %}
+      <div class="other-content">
+        {% block other_content %}{% endblock other_content %}
+      </div>
+    </main>
+  </div>
+</div>
+{% endblock body %}

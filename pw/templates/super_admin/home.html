@@ -1,0 +1,99 @@
+
+{% extends "super_admin/layout.html" %}
+
+{% block header %}Super Admin{% endblock header %}
+
+{% block other_content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 class="h2">Current wiki groups</h1>
+  <div class="btn-toolbar mb-2 mb-md-0">
+    <button class="btn btn-sm btn-outline-success" data-toggle="collapse" data-target="#add-wiki-group" aria-expanded="false" aria-controls="add-wiki-group" id="btn-add-wiki-group">
+      Add new wiki group
+    </button>
+  </div>
+</div>
+
+<div class="collapse" id="add-wiki-group" style="margin-bottom: 14px">
+  <div class="card card-body">
+    <form class="form-add-wiki-group" method="POST">
+      {{ form.csrf_token }}
+      <div style="max-width:300px;">
+        <div class="form-group">
+        {{ form.wiki_group_name(class_='form-control', placeholder='Wiki Group Name') }}
+        </div>
+        <div class="form-group">
+        {{ form.username(class_='form-control', placeholder='Wiki Group Admin') }}
+        </div>
+        <div class="form-group">
+        {{ form.email(class_='form-control', placeholder='Email') }}
+        </div>
+        <div class="form-group">
+        {{ form.password(class_='form-control', placeholder='Password') }}
+        </div>
+        <div class="form-group">
+        {{ form.submit(class_='btn btn-primary col-12') }}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if all_wiki_groups %}
+<table id="current-wiki-groups" class="table table-left">
+  <thead>
+    <tr>
+      <th>Wiki Group</th>
+      <th>Activated</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% macro toggle_switch(wiki_group, active) -%}
+    <td>
+      <label class="toggle-switch">
+        {% if active %}
+          {% set checked = 'checked' %}
+        {% else %}
+          {% set checked = '' %}
+        {% endif %}
+        <input type="checkbox" onclick="location.href='{{ url_for('super_admin.activate', wiki_group=wiki_group.db_name) }}'" {{ checked }}>
+        <span class="slider round"></span>
+      </label>
+    </td>
+    {%- endmacro %}
+    {% for wiki_group in all_wiki_groups %}
+    <tr>
+      {% if wiki_group.active %}
+      <td><a href="{{ url_for('wiki.home', wiki_group=wiki_group.db_name) }}">{{ wiki_group.name }}</a></td>
+      {% else %}
+      <td>{{ wiki_group.db_name }}</td>
+      {% endif %}
+      {{ toggle_switch(wiki_group, wiki_group.active) }}
+      <td><a href="{{ url_for('super_admin.delete_group', wiki_group=wiki_group.db_name) }}" class="btn btn-danger delete-db" role="button" aria-pressed="true">delete</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock other_content %}
+
+{% block js %}
+{{ super() }}
+<script type="text/javascript">
+  var elems = document.getElementsByClassName('delete-db');
+  var confirmIt = function (e) {
+      if (!confirm('Are you sure to delete this group?')) e.preventDefault();
+  };
+  for (var i = 0, l = elems.length; i < l; i++) {
+      elems[i].addEventListener('click', confirmIt, false);
+  }
+
+  $('#btn-add-wiki-group').on('click', function() {
+    if($(this).text() == 'Add new wiki group') {
+      $(this).text('Hide');
+    } else {
+      $(this).text('Add new wiki group');
+    }
+  });
+</script>
+{% endblock js %}
