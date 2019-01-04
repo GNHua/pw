@@ -10,7 +10,7 @@ from mongoengine.connection import disconnect
 from flask_login import login_user, logout_user
 
 from pw.extensions import db
-from pw.decorators import admin_required
+from pw.authentication import admin_required
 from pw.auth.forms import LoginForm
 from pw.super_admin.forms import AddWikiGroupForm
 from pw.models import WikiGroup, WikiUser, WikiLoginRecord, WikiPage

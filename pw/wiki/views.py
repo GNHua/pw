@@ -4,10 +4,11 @@ from flask import (Blueprint, g, request, redirect, url_for, render_template,
                    flash)
 import os
 from datetime import date, datetime, timedelta
-from flask_login import login_required, current_user
+from flask_login import current_user
 import difflib
 
-from pw.decorators import decorate_blueprint
+from pw.blueprints import setup_blueprint
+from pw.authentication import login_required
 from pw.extensions import db, markdown
 from pw.wiki.forms import (SearchForm, CommentForm, WikiEditForm, UploadForm,
                            RenameForm, HistoryRecoverForm)
@@ -18,7 +19,7 @@ from pw.utils import flash_errors, get_pagination_kwargs
 from pw.diff import make_patch, apply_patches
 
 blueprint = Blueprint('wiki', __name__, static_folder='../static', url_prefix='/<wiki_group>')
-decorate_blueprint(blueprint)
+setup_blueprint(blueprint)
 
 
 @blueprint.route('/home')

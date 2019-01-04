@@ -4,7 +4,7 @@ from flask import Flask, render_template
 from werkzeug.contrib.fixers import ProxyFix
 from datetime import timedelta
 
-from pw import commands, super_admin, admin, auth, wiki
+from pw import commands, wiki, super_admin, admin, auth
 from pw.extensions import csrf_protect, bcrypt, db, login_manager
 from pw.models import WikiGroup, WikiPage
 

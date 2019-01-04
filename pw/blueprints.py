@@ -4,15 +4,13 @@ import sys
 import inspect
 from mongoengine.connection import DEFAULT_CONNECTION_NAME
 from datetime import date
-from functools import wrap
-from flask_login import login_required, current_user
 
 from pw.extensions import db
 from pw.wiki.forms import SearchForm
 from pw.models import WikiPage
 
 
-def decorate_blueprint(blueprint):
+def setup_blueprint(blueprint):
 
     @blueprint.url_defaults
     def add_wiki_group_code(endpoint, values):
@@ -81,14 +79,3 @@ def decorate_blueprint(blueprint):
             wiki_changes=wiki_changes,
             latest_change_time=latest_change_time
         )
-
-
-def admin_required(f):
-    @wraps(f)
-    @login_required
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_admin:
-            abort(401)
-        return f(*args, **kwargs)
-
-    return decorated_function

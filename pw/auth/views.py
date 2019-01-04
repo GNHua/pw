@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 """Auth section"""
 from flask import Blueprint, redirect, url_for, g, session, request, render_template
-from flask_login import current_user, login_user, login_required, logout_user
+from flask_login import current_user, login_user, logout_user
 from werkzeug.urls import url_parse
 
-from pw.decorators import decorate_blueprint
+from pw.blueprints import setup_blueprint
+from pw.authentication import login_required
 from pw.auth.forms import LoginForm, ChangePwdForm
 from pw.models import WikiUser
 from pw.utils import flash_errors, convert_user_ids_to_dict, convert_dict_to_user_ids
 from pw.extensions import login_manager
 
 blueprint = Blueprint('auth', __name__, static_folder='../static', url_prefix='/<wiki_group>')
-decorate_blueprint(blueprint)
+setup_blueprint(blueprint)
 
 
 @blueprint.route('/login', methods=['GET', 'POST'])

@@ -3,7 +3,7 @@ from flask import g
 from datetime import datetime
 from mongoengine.connection import DEFAULT_CONNECTION_NAME
 from mongoengine.context_managers import switch_db
-from flask_login import current_user
+from flask_login import current_user, UserMixin
 
 from pw.extensions import db, bcrypt, login_manager
 from pw.utils import convert_user_ids_to_dict

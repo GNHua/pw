@@ -2,13 +2,14 @@
 """Admin section"""
 from flask import Blueprint, render_template, request
 
-from pw.decorators import decorate_blueprint, admin_required
+from pw.blueprints import setup_blueprint
+from pw.authentication import admin_required
 from pw.models import WikiPage, WikiFile, WikiUser, WikiLoginRecord
 from pw.utils import flash_errors, paginate
 from pw.admin.forms import KeyPageEditForm, NewUserForm, ManageUserForm
 
 blueprint = Blueprint('admin', __name__, static_folder='../static', url_prefix='/<wiki_group>')
-decorate_blueprint(blueprint)
+setup_blueprint(blueprint)
 
 
 @blueprint.route('/keypage-edit', methods=['GET', 'POST'])
