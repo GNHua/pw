@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
 """Admin section"""
 from flask import (Blueprint, render_template, redirect, url_for, flash,
-                   send_from_directory, current_app, session)
+                   send_from_directory, current_app, session, g, request)
 import os
 import shutil
 from mongoengine.connection import DEFAULT_CONNECTION_NAME
 from mongoengine.connection import _connection_settings as db_connection_settings
 from mongoengine.connection import disconnect
-from flask_login import login_user, logout_user
+from flask_login import login_user, logout_user, current_user
 
 from pw.extensions import db
 from pw.authentication import admin_required
 from pw.auth.forms import LoginForm
 from pw.super_admin.forms import AddWikiGroupForm
 from pw.models import WikiGroup, WikiUser, WikiLoginRecord, WikiPage
-from pw.settings import UPLOAD_PATH, MONGODB_SETTINGS
 from pw.utils import flash_errors, convert_user_ids_to_dict, convert_dict_to_user_ids
 
 blueprint = Blueprint('super_admin', __name__, static_folder='../static')
@@ -54,8 +53,8 @@ def login():
                 ip=request.remote_addr
             ).save()
 
-            return redirect('.home')
-        flash('Invalid username or password.', 'warning')
+            return redirect(url_for('.home'))
+        flash('Invalid username or password.', 'danger')
     else:
         flash_errors(form)
     return render_template('auth/login.html', form=form)
@@ -93,16 +92,16 @@ def home():
         # Initialize a new database for the just-created group
         # Make sure the new group name is not occupied.
         if new_group.db_name in db.connection.database_names():
-            flash('Wiki group already exists')
+            flash('Wiki group already exists', 'danger')
         else:
             try:
-                os.mkdir(os.path.join(UPLOAD_PATH, new_group.db_name))
+                os.mkdir(os.path.join(current_app.config['UPLOAD_PATH'], new_group.db_name))
                 new_group.save()
                 db.register_connection(
                     alias=new_group.db_name, 
                     name=new_group.db_name,
-                    host=MONGODB_SETTINGS['host'],
-                    port=MONGODB_SETTINGS['port']
+                    host=current_app.config['MONGODB_SETTINGS']['host'],
+                    port=current_app.config['MONGODB_SETTINGS']['port']
                 )
 
                 new_user = WikiUser(
@@ -113,10 +112,10 @@ def home():
                 new_user.set_password(form.password.data)
                 new_user.switch_db(new_group.db_name).save()
                 WikiPage(title='Home').switch_db(new_group.db_name).save()
-                flash('New wiki group added')
+                flash('New wiki group added', 'success')
                 return redirect(url_for('.home'))
             except FileExistsError:
-                flash('Upload directory already exists')
+                flash('Upload directory already exists', 'danger')
 
     else:
         flash_errors(form)
@@ -142,8 +141,8 @@ def activate(wiki_group):
             db.register_connection(
                 alias=wg.db_name,
                 name=wg.db_name,
-                host=MONGODB_SETTINGS['host'],
-                port=MONGODB_SETTINGS['port'])
+                host=current_app.config['MONGODB_SETTINGS']['host'],
+                port=current_app.config['MONGODB_SETTINGS']['port'])
         wg.save()
     return redirect(url_for('.home'))
 
@@ -152,22 +151,14 @@ def activate(wiki_group):
 @admin_required
 def delete_group(wiki_group):
     wg = WikiGroup.objects(db_name=wiki_group).first()
-    if not wg:
+    if wg is not None:
         if wg.active:
             db_connection_settings.pop(wg.db_name, None)
             disconnect(wg.db_name)
         db.connection.drop_database(wg.db_name)
         wg.delete()
 
-        users = WikiUser.objects.all()
-        for u in users:
-            u.permissions.pop(wg.db_name, None)
-            if u.permissions:
-                u.save()
-            else:
-                u.delete()
-
-        shutil.rmtree(os.path.join(UPLOAD_PATH, wiki_group))
+        shutil.rmtree(os.path.join(current_app.config['UPLOAD_PATH'], wiki_group))
 
     return redirect(url_for('.home'))
 

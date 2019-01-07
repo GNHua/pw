@@ -61,7 +61,7 @@ All Users
       {% else %}
       <td>User</td>
       {% endif %}
-      <td><a href="{{ url_for('admin.manager_user', wiki_user_id=wiki_user.id) }}" class="btn btn-sm btn-warning " role="button" aria-pressed="true">manage</a></td>
+      <td><a href="{{ url_for('admin.manage_user', wiki_user_id=wiki_user.id) }}" class="btn btn-sm btn-warning " role="button" aria-pressed="true">manage</a></td>
     </tr>
     {% endfor %}
   </tbody>

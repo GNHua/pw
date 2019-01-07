@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """Auth section"""
-from flask import Blueprint, redirect, url_for, g, session, request, render_template
+from flask import (Blueprint, redirect, url_for, g, session, request,
+                   render_template, flash)
 from flask_login import current_user, login_user, logout_user
 from werkzeug.urls import url_parse
 
 from pw.blueprints import setup_blueprint
 from pw.authentication import login_required
 from pw.auth.forms import LoginForm, ChangePwdForm
-from pw.models import WikiUser
+from pw.models import WikiUser, WikiLoginRecord
 from pw.utils import flash_errors, convert_user_ids_to_dict, convert_dict_to_user_ids
 from pw.extensions import login_manager
 
@@ -24,7 +25,7 @@ def login():
     if form.validate_on_submit():
         user = WikiUser.objects(name=form.username.data).first()
         if user is not None and user.verify_password(form.password.data):
-            user_id_dict = convert_user_ids_to_dict(session.get['user_id'])
+            user_id_dict = convert_user_ids_to_dict(session.get('user_id'))
             user_id_dict[g.wiki_group] = user.id
             user.id = convert_dict_to_user_ids(user_id_dict)
             login_user(user, form.remember_me.data)
@@ -42,7 +43,7 @@ def login():
             if not next_page or url_parse(next_page).netloc != '':
                 next_page = url_for('wiki.home')
             return redirect(next_page)
-        flash('Invalid username or password.', 'warning')
+        flash('Invalid username or password.', 'danger')
     else:
         flash_errors(form)
     return render_template('auth/login.html', form=form)
@@ -51,7 +52,7 @@ def login():
 @blueprint.route('/logout')
 @login_required
 def logout():
-    user_id_dict = convert_user_ids_to_dict(session['user_id'])
+    user_id_dict = convert_user_ids_to_dict(session.get('user_id'))
     if len(user_id_dict) == 1:
         logout_user()
     else:
@@ -69,15 +70,15 @@ def change_password(username):
     form = ChangePwdForm()
     if form.validate_on_submit():
         if not current_user.verify_password(form.old_password.data):
-            flash('Password Verification Failed.')
+            flash('Password Verification Failed.', 'danger')
         elif form.new_password.data != form.confirm_password.data:
-            flash('Please confirm new password again.')
+            flash('Please confirm new password again.', 'danger')
         else:
             current_user.set_password(form.new_password.data)
             (WikiUser
              .objects(name=current_user.name)
              .update_one(set__password_hash=current_user.password_hash))
-            flash('Password changed.')
+            flash('Password changed.', 'success')
     else:
         flash_errors(form)
 

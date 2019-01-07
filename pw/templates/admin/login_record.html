@@ -24,7 +24,7 @@ Login Record
     </tr>
   </thead>
   <tbody>
-    {% for record in data %}
+    {% for record in data.items %}
     <tr>
       <th scope="row">{{ loop.index + number_per_page*(current_page_number-1) }}</th>
       <td>{{ record.username }}</td>

@@ -58,6 +58,7 @@ def setup_blueprint(blueprint):
         wiki_keypages = (WikiPage
                          .objects(keypage__exists=True)
                          .only('title')
+                         .order_by('+keypage')
                          .all())
 
         # TODO: enhancement - this might be a performance bottleneck in the future.

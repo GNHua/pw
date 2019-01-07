@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Admin section"""
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from pw.blueprints import setup_blueprint
 from pw.authentication import admin_required
@@ -35,7 +35,7 @@ def keypage_edit():
              .objects(title=new_title)
              .update_one(set__keypage=i+1))
 
-        return redirect(url_for('.home'))
+        return redirect(url_for('wiki.home'))
     else:
         flash_errors(form)
 
@@ -97,10 +97,10 @@ def all_users():
             )
             new_user.set_password(form.password.data)
             new_user.save()
-            flash('New user added')
+            flash('New user added', 'success')
             return redirect(url_for('.all_users'))
         else:
-            flash('User already exists.')
+            flash('User already exists.', 'danger')
     else:
         flash_errors(form)
 
@@ -114,10 +114,10 @@ def all_users():
 
 @blueprint.route('/manage-user/<wiki_user_id>', methods=['GET', 'POST'])
 @admin_required
-def manage_user():
+def manage_user(wiki_user_id):
     user = WikiUser.objects(id=wiki_user_id).first()
     if user is None:
-        return redirect(url_for('.all_user'))
+        return redirect(url_for('.all_users'))
 
     form = ManageUserForm(
         username=user.name,
@@ -130,14 +130,14 @@ def manage_user():
             user.delete()
             flash('User removed.', 'warning')
         else:
-            user.username = form.username.data
+            user.name = form.username.data
             user.email = form.email.data
             user.is_admin = form.is_admin.data
-            if not form.password.data:
+            if form.password.data:
                 user.set_password(form.password.data)
             user.save()
-            flash('User updated.', 'info')
-        return redirect(url_for('.all_user'))
+            flash('User updated.', 'success')
+        return redirect(url_for('.all_users'))
     else:
         flash_errors(form)
 

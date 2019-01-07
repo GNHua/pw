@@ -38,9 +38,7 @@ text-center
     {{ form.remember_me.label }}
     </div>
     {{ form.submit(class="btn btn-lg btn-primary btn-block") }}
+    <p class="mt-5 mb-3 text-muted"><a href="{{ url_for('super_admin.cover') }}">Cover</a></p>
   </form>
 
-  <footer class="footer" style="text-align:center">
-    <a href="{{ url_for('super_admin.cover') }}">Cover</a>
-  </footer>
 {% endblock body %}

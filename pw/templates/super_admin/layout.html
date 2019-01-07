@@ -11,11 +11,12 @@
   <span class="navbar-brand">
     {% block header %}{% endblock header %}
   </span>
+  {% include 'super_admin/nav.html' %}
 </nav>
 
 <div class="container-fluid">
   <div class="row">
-    {% include 'super_admin/sidebar.html' %}
+    <nav class="col-md-2 d-none d-md-block bg-light sidebar"></nav>
 
     <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
       {% with messages = get_flashed_messages(with_categories=true) %}

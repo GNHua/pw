@@ -23,7 +23,7 @@ All Files
     </tr>
   </thead>
   <tbody>
-    {% for wiki_file in data %}
+    {% for wiki_file in data.items %}
     <tr>
       <th scope="row">{{ wiki_file.id }}</th>
       <td><a href="{{ url_for('wiki.file', wiki_file_id=wiki_file.id) }}">{{ wiki_file.name }}</a></td>

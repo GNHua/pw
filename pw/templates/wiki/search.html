@@ -43,7 +43,7 @@ Search
       </tr>
     </thead>
     <tbody>
-      {% for wiki_page in data %}
+      {% for wiki_page in data.items %}
       <tr>
         <th scope="row">{{ loop.index + number_per_page*(current_page_number-1) }}</th>
         <td><a href="{{ url_for('wiki.page', wiki_page_id=wiki_page.id) }}">{{ wiki_page.title }}</a></td>

@@ -26,14 +26,46 @@ def load_user(user_id):
 class WikiGroup(db.Document):
     name = db.StringField(unique=True)
     db_name = db.StringField(unique=True)
-    active = db.BooleanField()
+    active = db.BooleanField(required=True)
 
     meta = {'collection': 'wiki_group'}
 
 
+class WikiUser(db.Document, UserMixin):
+    name = db.StringField(unique=True, required=True)
+    email = db.StringField(required=True)
+    password_hash = db.BinaryField()
+    is_admin = db.BooleanField()
+
+    meta = {'collection': 'wiki_user'}
+
+    def __repr__(self):
+        return '<User {}>'.format(self.name)
+
+    def set_password(self, password):
+        self.password_hash = bcrypt.generate_password_hash(password, 12)
+
+    def verify_password(self, password):
+        return bcrypt.check_password_hash(self.password_hash, password)
+
+
+class WikiLoginRecord(db.Document):
+    username = db.StringField()
+    timestamp = db.DateTimeField(default=datetime.now)
+    browser = db.StringField()
+    platform = db.StringField()
+    details = db.StringField()
+    ip = db.StringField()
+
+    meta = {
+        'collection': 'wiki_login_record',
+        'ordering': ['-timestamp']
+    }
+
+
 class WikiPageVersion(db.Document):
     diff = db.StringField()
-    version = db.IntField()
+    version = db.IntField(required=True)
     modified_on = db.DateTimeField()
     modified_by = db.StringField()
 
@@ -95,51 +127,19 @@ class WikiPage(db.Document):
             'set__modified_by': current_user.name,
             'push__versions': wiki_page_version
         }
-        if update_refss:
+        if update_refs:
             updates['set__toc'] = toc
             updates['set__refs'] = self.refs
 
-        self.__class__.objects(id=wiki_page.id).update_one(**updates)
+        self.__class__.objects(id=self.id).update_one(**updates)
 
 
 class WikiFile(db.Document):
     id = db.SequenceField(primary_key=True)
-    name = db.StringField(max_length=256, required=True)
+    name = db.StringField(required=True)
     mime_type = db.StringField()
     size = db.IntField()  # in bytes
     uploaded_on = db.DateTimeField(default=datetime.now)
     uploaded_by = db.StringField()
 
     meta = {'collection': 'wiki_file'}
-
-
-class WikiUser(db.Document, UserMixin):
-    name = db.StringField(unique=True)
-    email = db.StringField(required=True)
-    password_hash = db.StringField()
-    is_admin = db.BooleanField()
-
-    meta = {'collection': 'wiki_user'}
-
-    def __repr__(self):
-        return '<User {}>'.format(self.name)
-
-    def set_password(self, password):
-        self.password_hash = bcrypt.generate_password_hash(password, 12)
-
-    def verify_password(self, password):
-        return bcrypt.check_password_hash(self.password_hash, password)
-
-
-class WikiLoginRecord(db.Document):
-    username = db.StringField()
-    timestamp = db.DateTimeField(default=datetime.now)
-    browser = db.StringField()
-    platform = db.StringField()
-    details = db.StringField()
-    ip = db.StringField()
-
-    meta = {
-        'collection': 'wiki_login_record',
-        'ordering': ['-timestamp']
-    }

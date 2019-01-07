@@ -24,7 +24,7 @@
   <body id="toplevel">
     <div id="in"><form method="POST">
       {{ edit_form.csrf_token }}
-      {% set f = edit_form.textArea.process_data(wiki_page.markdown) %}
+      {% set f = edit_form.textArea.process_data(wiki_page.md) %}
       {{ edit_form.textArea(id='code') }}
       {{ edit_form.submit(id='save', class_='hidden') }}
       {{ edit_form.current_version(value=wiki_page.current_version, readonly=true, class_='hidden') }}
@@ -67,7 +67,6 @@
     crossorigin="anonymous"></script>
     <script>window.jQuery || document.write(`<script src="{{ url_for('static', filename='js/jquery-3.3.1.min.js') }}"><\/script>`)</script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
-    <script>window.MathJax || document.write(`<script src="{{ url_for('static', filename='js/MathJax/MathJax.js', config='TeX-MML-AM_CHTML') }}"><\/script>`)</script>
     <script type="text/x-mathjax-config">
       MathJax.Hub.Config({
         tex2jax: {

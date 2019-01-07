@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Wiki section, including wiki pages for each group."""
 from flask import (Blueprint, g, request, redirect, url_for, render_template,
-                   flash)
+                   flash, current_app)
 import os
 from datetime import date, datetime, timedelta
 from flask_login import current_user
@@ -13,9 +13,8 @@ from pw.extensions import db, markdown
 from pw.wiki.forms import (SearchForm, CommentForm, WikiEditForm, UploadForm,
                            RenameForm, HistoryRecoverForm)
 from pw.models import WikiPage, WikiPageVersion, WikiFile
-from pw.settings import UPLOAD_PATH
 from pw.markdown import render_wiki_page, render_wiki_file
-from pw.utils import flash_errors, get_pagination_kwargs
+from pw.utils import flash_errors, get_pagination_kwargs, paginate
 from pw.diff import make_patch, apply_patches
 
 blueprint = Blueprint('wiki', __name__, static_folder='../static', url_prefix='/<wiki_group>')
@@ -33,10 +32,10 @@ def home():
 @blueprint.route('/page/<wiki_page_id>')
 @login_required
 def page(wiki_page_id):
-    comment_form = CommentForm()
+    form = CommentForm()
     wiki_page = (WikiPage
                  .objects
-                 .excluede('versions', 'refs')
+                 .exclude('versions', 'refs')
                  .get_or_404(id=wiki_page_id))
 
     if form.validate_on_submit():
@@ -101,7 +100,7 @@ def edit(wiki_page_id):
             return redirect(url_for('.page', wiki_page_id=wiki_page.id))
         else:
             flash('Other changes have been made to this '
-                  'wiki page since you started editing it.')
+                  'wiki page since you started editing it.', 'danger')
 
     return render_template(
         'wiki/edit.html',
@@ -133,8 +132,8 @@ def handle_upload():
     wiki_files = list()
     for i, file in enumerate(request.files.getlist('wiki_file')):
         # TODO: add uploaded_by
-        wiki_file = WikiFile(name=file.filename, mime_type=file.mime_type)
-        file.save(os.path.join(UPLOAD_PATH, g.wiki_group, str(wiki_file.id)))
+        wiki_file = WikiFile(name=file.filename, mime_type=file.mimetype)
+        file.save(os.path.join(current_app.config['UPLOAD_PATH'], g.wiki_group, str(wiki_file.id)))
         # Use the position of file pointer to get file size
         wiki_file.size = file.tell()
         wiki_file.save()
@@ -202,7 +201,7 @@ def rename(wiki_page_id):
         if wiki_page.title == new_title:
             flash('The page name is not changed.', 'warning')
         elif WikiPage.objects(title=new_title).count() > 0:
-            flash('The new page title has already been taken.', 'warning')
+            flash('The new page title has already been taken.', 'danger')
         else:
             old_md = '[[{}]]'.format(wiki_page.title)
             new_md = '[[{}]]'.format(new_title)
@@ -257,7 +256,7 @@ def file(wiki_file_id):
         fn = wiki_file.name
 
     return send_from_directory(
-        os.path.join(UPLOAD_PATH, g.wiki_group),
+        os.path.join(current_app.config['UPLOAD_PATH'], g.wiki_group),
         str(wiki_file_id),
         as_attachment=True,
         attachment_filename=fn
@@ -280,7 +279,7 @@ def history(wiki_page_id):
     form = HistoryRecoverForm()
     if form.validate_on_submit():
         if form.version.data >= wiki_page.current_version:
-            flash('Please enter an old version number.')
+            flash('Please enter an old version number.', 'danger')
         else:
             old_to_current = wiki_page.versions[(form.version.data-1):]
             old_to_current_patches = [pv.diff for pv in old_to_current[::-1]]
@@ -312,8 +311,8 @@ def history(wiki_page_id):
             version=wiki_page.current_version-1
         ))
 
-    old_to_current = wiki_page.versions[old_ver_num-1:]
-    old_to_current_patches = [pv.diff for pv in old_to_current[::-1]]
+    wiki_page_versions = wiki_page.versions[old_ver_num-1:]
+    old_to_current_patches = [pv.diff for pv in wiki_page_versions[::-1]]
     new_markdown = apply_patches(wiki_page.md, old_to_current_patches[:-1], revert=True)
     old_markdown = apply_patches(new_markdown, [old_to_current_patches[-1]], revert=True)
 
@@ -343,8 +342,6 @@ def search():
     keyword = request.args.get('keyword')
     start_date = request.args.get('start')
     end_date = request.args.get('end')
-    current_page_number = request.args.get('page', default=1, type=int)
-    number_per_page = 100
     kwargs = dict()
     form = SearchForm(search=keyword, start_date=start_date, end_date=end_date)
 
@@ -356,17 +353,13 @@ def search():
         if end_date:
             end_date = datetime.strptime(end_date, '%m/%d/%Y')+timedelta(days=1)
             filter['modified_on__lte'] = temp
-        results = (WikiPage
-                   .objects(**filter)
-                   .search_text(keyword)
-                   .only('title', 'modified_on', 'modified_by')
-                   .order_by('$text_score', '-modified_on')
-                   .paginate(page=result_page, per_page=number_per_page))
+        query_set = (WikiPage
+                     .objects(**filter)
+                     .search_text(keyword)
+                     .only('title', 'modified_on', 'modified_by')
+                     .order_by('$text_score', '-modified_on'))
 
-        kwargs['data'] = results
-        kwargs['number_per_page'] = number_per_page
-        total_page_number = results.pages
-        get_pagination_kwargs(kwargs, current_page_number, total_page_number)
+        kwargs = paginate(query_set)
 
     if form.validate_on_submit():
         return redirect(url_for(
@@ -387,16 +380,11 @@ def search():
 @blueprint.route('/changes')
 @login_required
 def changes():
-    current_page_number=request.args.get('page', default=1, type=int)
-    number_per_page = 100
-    results = (WikiPage
-               .objects
-               .only('title', 'modified_on', 'modified_by')
-               .order_by('-modified_on')
-               .paginate(current_page_number, paginate_by=number_per_page))
-    total_page_number = results.pages
-    kwargs = dict(data=results, number_per_page=number_per_page)
-    get_pagination_kwargs(kwargs, current_page_number, total_page_number)
+    query_set = (WikiPage
+                 .objects
+                 .only('title', 'modified_on', 'modified_by')
+                 .order_by('-modified_on'))
+    kwargs = paginate(query_set)
 
     return render_template(
         'wiki/changes.html',

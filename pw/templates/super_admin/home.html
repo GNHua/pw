@@ -7,9 +7,7 @@
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
   <h1 class="h2">Current wiki groups</h1>
   <div class="btn-toolbar mb-2 mb-md-0">
-    <button class="btn btn-sm btn-outline-success" data-toggle="collapse" data-target="#add-wiki-group" aria-expanded="false" aria-controls="add-wiki-group" id="btn-add-wiki-group">
-      Add new wiki group
-    </button>
+    <button class="btn btn-sm btn-outline-success" data-toggle="collapse" data-target="#add-wiki-group" aria-expanded="false" aria-controls="add-wiki-group" id="btn-add-wiki-group">Add new group</button>
   </div>
 </div>
 
@@ -19,10 +17,10 @@
       {{ form.csrf_token }}
       <div style="max-width:300px;">
         <div class="form-group">
-        {{ form.wiki_group_name(class_='form-control', placeholder='Wiki Group Name') }}
+        {{ form.wiki_group_name(class_='form-control', placeholder='Group Name') }}
         </div>
         <div class="form-group">
-        {{ form.username(class_='form-control', placeholder='Wiki Group Admin') }}
+        {{ form.username(class_='form-control', placeholder='Group Admin') }}
         </div>
         <div class="form-group">
         {{ form.email(class_='form-control', placeholder='Email') }}
@@ -42,7 +40,7 @@
 <table id="current-wiki-groups" class="table table-left">
   <thead>
     <tr>
-      <th>Wiki Group</th>
+      <th>Group</th>
       <th>Activated</th>
       <th>Action</th>
     </tr>
@@ -89,10 +87,10 @@
   }
 
   $('#btn-add-wiki-group').on('click', function() {
-    if($(this).text() == 'Add new wiki group') {
+    if($(this).text() === 'Add new group') {
       $(this).text('Hide');
     } else {
-      $(this).text('Add new wiki group');
+      $(this).text('Add new group');
     }
   });
 </script>

@@ -14,7 +14,7 @@ History - {{ wiki_page.title }}
   {{ form.csrf_token }}
   Rewind to
   <div class="form-group mx-sm-3 mb-2">
-    {{ form.version(class_='form-control') }}
+    {{ form.version(class_='form-control', placeholder='version') }}
   </div>
   {{ form.submit(class_='btn btn-primary mb-2') }} 
   <a href="{{ url_for('wiki.page', wiki_page_id=wiki_page.id) }}" class="btn btn-secondary mx-sm-2 mb-2" role="button">Cancel</a>
@@ -30,14 +30,17 @@ History - {{ wiki_page.title }}
 <table class="diff" id="diff-all">
   <tr>
     <td align="center">
-      Version {{ old_ver_num }} / {{ wiki_page.current_version }}<br>
+      Version {{ old_ver_num }} / {{ wiki_page.current_version }}<br/>
+      {{ wiki_page_versions[-1].modified_by }}<br/>
       {{ wiki_page_versions[-1].modified_on.strftime('%Y-%m-%d %H:%M:%S') }}
     </td>
     <td align="center">
-      Version {{ new_ver_num }} / {{ wiki_page.current_version }}<br>
+      Version {{ new_ver_num }} / {{ wiki_page.current_version }}<br/>
       {% if new_ver_num < wiki_page.current_version %}
+      {{ wiki_page_versions[-2].modified_by }}<br/>
       {{ wiki_page_versions[-2].modified_on.strftime('%Y-%m-%d %H:%M:%S') }}
       {% else %}
+      {{ wiki_page.modified_by }}<br/>
       {{ wiki_page.modified_on.strftime('%Y-%m-%d %H:%M:%S') }}
       {% endif %}
     </td>
