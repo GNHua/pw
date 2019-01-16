@@ -66,7 +66,7 @@ def logout():
 
 @blueprint.route('/change-password', methods=['GET', 'POST'])
 @login_required
-def change_password(username):
+def change_password():
     form = ChangePwdForm()
     if form.validate_on_submit():
         if not current_user.verify_password(form.old_password.data):

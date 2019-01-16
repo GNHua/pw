@@ -5,7 +5,7 @@ from werkzeug.contrib.fixers import ProxyFix
 from datetime import timedelta
 
 from pw import commands, wiki, super_admin, admin, auth
-from pw.extensions import csrf_protect, bcrypt, db, login_manager
+from pw.extensions import csrf_protect, bcrypt, db, login_manager, mail
 from pw.models import WikiGroup, WikiPage
 
 
@@ -34,6 +34,7 @@ def register_extensions(app):
     bcrypt.init_app(app)
     db.init_app(app)
     login_manager.init_app(app)
+    mail.init_app(app)
     return None
 
 

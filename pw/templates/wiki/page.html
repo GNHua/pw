@@ -17,7 +17,32 @@
 <div align="right" style="border-bottom:1px solid #c9c5c5">
   <i><small>modified by {{ wiki_page.modified_by }} on {{ wiki_page.modified_on.strftime('%Y-%m-%d %H:%M:%S') }}</small></i>
 </div>
-<br><br><br><br><br><br><br><br>
 
-{# TODO: add comment box and comments #}
+<div class="row">
+  <div class="col-md-6" id="wiki-comment-box">
+    <div class="widget-area no-padding blank">
+      <form method="POST">
+        {{ form.csrf_token }}
+        {{ form.textArea(placeholder='{} says:'.format(current_user.name)) }}
+        <span style="margin:0 10px;color:#888;">Enter markdown</span>
+        {{ form.submit(class="btn btn-primary btn-sm float-right", value="Submit") }}
+      </form>
+    </div>
+  </div>
+</div>
+
+{% for comment in wiki_page.comments %}
+<div class="card mb-3">
+  <div class="card-header">
+  {{ comment.timestamp.strftime("%Y-%m-%d %H:%M:%S") }} &nbsp; {{ comment.author }} says :
+  {% if current_user.is_admin or comment.author == current_user.name %}
+    <a href="{{ url_for('wiki.delete_comment', wiki_page_id=wiki_page.id, comment_index=loop.index0) }}" class="close">&times;</a>
+  {% endif %}
+  </div>
+  <div class="card-body">
+  {{ comment.html|safe }}
+  </div>
+</div>
+{% endfor %}
+
 {% endblock content %}

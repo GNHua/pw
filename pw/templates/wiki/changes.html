@@ -5,11 +5,17 @@ Changes
 {% endblock header %}
 
 {% block other_content %}
+<select class="form-control" id="select-wiki-user">
+  <option>All users</option>
+  {% for wiki_user in wiki_users %}
+  <option>{{ wiki_user }}</option>
+  {% endfor %}
+</select>
+<br/>
+
 {% macro my_url_for(page_number) -%}
 {{ url_for('wiki.changes', page=page_number) }}
 {%- endmacro %}
-
-{% include 'wiki/pagination.html' %}
 
 <table class="table table-sm">
   <thead>
@@ -35,3 +41,15 @@ Changes
 {% include 'wiki/pagination.html' %}
 <br><br><br><br><br><br><br><br>
 {% endblock other_content %}
+
+{% block js %}
+{{ super() }}
+
+<script type="text/javascript">
+  $('#select-wiki-user').prop('selectedIndex', {{ selected_index }});
+  $('#select-wiki-user').on('change', function() {
+    let selected_wiki_user = this.value;
+    location.href = `/{{ wiki_group }}/changes?user=${selected_wiki_user}`;
+  });
+</script>
+{% endblock js %}

@@ -51,11 +51,13 @@ def group_admin():
     wiki_page_num = WikiPage.objects.count()
     wiki_file_num = WikiFile.objects.count()
     wiki_user_num = WikiUser.objects.count()
+    wiki_login_rec_num = WikiLoginRecord.objects.count()
     return render_template(
         'admin/group_admin.html',
         wiki_page_num=wiki_page_num,
         wiki_file_num=wiki_file_num,
-        wiki_user_num=wiki_user_num
+        wiki_user_num=wiki_user_num,
+        wiki_login_rec_num=wiki_login_rec_num
     )
 
 
@@ -154,7 +156,7 @@ def login_record():
     query_set = WikiLoginRecord.objects
     kwargs = paginate(query_set)
     return render_template(
-        'admin/login_record.html',
+        'admin/login_records.html',
         **kwargs
     )
 

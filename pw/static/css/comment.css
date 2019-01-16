@@ -1,0 +1,50 @@
+:target:before {
+  content:"";
+  display:block;
+  height:60px; /* fixed header height*/
+  margin:-60px 0 0; /* negative fixed header height */
+}
+
+.widget-area {
+  background: #e4e4e4;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  -ms-border-radius: 4px;
+  -o-border-radius: 4px;
+  border-radius: 4px;
+  -webkit-box-shadow: 0 0 16px rgba(0, 0, 0, 0.1);
+  -moz-box-shadow: 0 0 16px rgba(0, 0, 0, 0.1);
+  -ms-box-shadow: 0 0 16px rgba(0, 0, 0, 0.1);
+  -o-box-shadow: 0 0 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.3);
+  float: left;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  position: relative;
+  width: 100%;
+}
+
+.widget-area form {
+  float: left;
+  width: 100%;
+}
+
+.widget-area form textarea {
+  -webkit-border-radius: 4px 4px 0 0;
+  -moz-border-radius: 4px 4px 0 0;
+  -ms-border-radius: 4px 4px 0 0;
+  -o-border-radius: 4px 4px 0 0;
+  border-radius: 4px 4px 0 0;
+  font-family: inherit;
+  line-height: 1em;
+  float: left;
+  height: 105px;
+  padding: 10px;
+  width: 100%;
+  margin-bottom: 3px;
+  border: 1px solid #F2F2F2;
+}
+
+.widget-area form .btn {
+  margin-bottom: 5px;
+}

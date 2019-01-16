@@ -6,10 +6,11 @@ from markdown.util import etree
 from markdown.extensions import Extension
 from flask_login import current_user
 
-from pw.models import WikiPage, WikiFile
+from pw.models import WikiPage, WikiFile, WikiUser
 
 wiki_page_regex = r'\[\[(.+?)\]\]'
 wiki_file_regex = r'\[(file|image):(\d+)(@(\d+)x(\d+))?\]'
+wiki_at_regex = r'\[@(.+?)\]'
 
 # TODO: look into another markdown parse, mistune
 
@@ -64,11 +65,31 @@ class WikiFileExtension(Extension):
         md.inlinePatterns['wiki_file'] = WikiFilePattern(wiki_file_regex)
 
 
+# Parse `@` notification in comments
+class WikiAtPattern(Pattern):
+
+    def handleMatch(self, m):
+        username = m.group(2)
+        u = WikiUser.objects(name=username).first()
+        if u is not None:
+            el = etree.Element('strong')
+            el.text = '[@{0}]'.format(username)
+            g.users_to_email.append(u)
+            el.attrib['class'] = 'wiki-user-notification'
+            return el
+
+
+class WikiAtExtension(Extension):
+    def extendMarkdown(self, md, md_globals):
+        md.inlinePatterns['wiki_at'] = WikiAtPattern(wiki_at_regex)
+
+
 class WikiMarkdown(markdown.Markdown):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, extensions=[
             WikiPageExtension(),
             WikiFileExtension(),
+            WikiAtExtension(),
             'markdown.extensions.toc',
             'pymdownx.github'
         ], **kwargs)

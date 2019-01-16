@@ -6,16 +6,18 @@ import os
 from datetime import date, datetime, timedelta
 from flask_login import current_user
 import difflib
+from mongoengine.errors import ValidationError
 
 from pw.blueprints import setup_blueprint
 from pw.authentication import login_required
 from pw.extensions import db, markdown
 from pw.wiki.forms import (SearchForm, CommentForm, WikiEditForm, UploadForm,
                            RenameForm, HistoryRecoverForm)
-from pw.models import WikiPage, WikiPageVersion, WikiFile
+from pw.models import WikiPage, WikiPageVersion, WikiFile, WikiComment, WikiUser
 from pw.markdown import render_wiki_page, render_wiki_file
 from pw.utils import flash_errors, get_pagination_kwargs, paginate
 from pw.diff import make_patch, apply_patches
+from pw.email import send_email
 
 blueprint = Blueprint('wiki', __name__, static_folder='../static', url_prefix='/<wiki_group>')
 setup_blueprint(blueprint)
@@ -29,7 +31,7 @@ def home():
     return redirect(url_for('.page', wiki_page_id=wiki_page.id))
 
 
-@blueprint.route('/page/<wiki_page_id>')
+@blueprint.route('/page/<wiki_page_id>', methods=['GET', 'POST'])
 @login_required
 def page(wiki_page_id):
     form = CommentForm()
@@ -40,6 +42,7 @@ def page(wiki_page_id):
 
     if form.validate_on_submit():
         g.wiki_page = wiki_page
+        g.users_to_email = list()
         _, comment_html = markdown(form.textArea.data)
         new_comment = WikiComment(
             author=current_user.name,
@@ -51,14 +54,11 @@ def page(wiki_page_id):
          .objects(id=wiki_page_id)
          .update_one(push__comments=new_comment))
 
-        # TODO: add user emailing
-        # user_emails = [u.email for u in g.users_to_notify]
-        # send_email(user_emails, 'You are mentioned', 
-        #             '{} ({}) mentioned you at <a href="{}#wiki-comment-box">{}</a>'.\
-        #             format(current_user.name, 
-        #                     current_user.email, 
-        #                     request.base_url, 
-        #                     page.title))
+        user_emails = [u.email for u in g.users_to_email]
+        msg = '{0} ({1}) mentioned you at <a href="{2}#wiki-comment-box">{3}</a>'\
+            .format(current_user.name, current_user.email, request.base_url, wiki_page.title)
+        send_email(user_emails, 'You are mentioned', msg)
+
         return redirect(url_for(
             '.page', 
             wiki_page_id=wiki_page_id, 
@@ -67,13 +67,28 @@ def page(wiki_page_id):
 
     return render_template(
         'wiki/page.html',
-        wiki_page=wiki_page
+        wiki_page=wiki_page,
+        form=form
     )
 
 
-# @blueprint.route('/handle-comment', methods=['POST'])
-# def handle_comment():
-#     form = request.form
+@blueprint.route('/delete-comment')
+@login_required
+def delete_comment():
+    wiki_page_id = request.args.get('wiki_page_id')
+    comment_index = request.args.get('comment_index', type=int)
+
+    # Mongodb does not have atomic update for remove array elements by index.
+    # So here it was firstly unset, and then removed as None.
+    if comment_index is not None:
+        try:
+            updates = {'unset__comments__{0}'.format(comment_index): 1}
+            WikiPage.objects(id=wiki_page_id).update_one(**updates)
+            WikiPage.objects(id=wiki_page_id).update_one(pull__comments=None)
+        except ValidationError:
+            pass
+
+    return redirect(url_for('.page', wiki_page_id=wiki_page_id))
 
 
 @blueprint.route('/edit/<wiki_page_id>', methods=['GET', 'POST'])
@@ -131,9 +146,15 @@ def handle_upload():
     file_markdown, file_html = '', ''
     wiki_files = list()
     for i, file in enumerate(request.files.getlist('wiki_file')):
-        # TODO: add uploaded_by
-        wiki_file = WikiFile(name=file.filename, mime_type=file.mimetype)
-        file.save(os.path.join(current_app.config['UPLOAD_PATH'], g.wiki_group, str(wiki_file.id)))
+        wiki_file = WikiFile(
+            name=file.filename,
+            mime_type=file.mimetype,
+            upload_by=current_user.name
+        )
+        file.save(os.path.join(
+            current_app.config['UPLOAD_PATH'],
+            g.wiki_group, str(wiki_file.id)
+        ))
         # Use the position of file pointer to get file size
         wiki_file.size = file.tell()
         wiki_file.save()
@@ -346,15 +367,15 @@ def search():
     form = SearchForm(search=keyword, start_date=start_date, end_date=end_date)
 
     if keyword and not keyword.isspace():
-        filter = dict()
+        filters = dict()
         if start_date:
             start_date = datetime.strptime(start_date, '%m/%d/%Y')
-            filter['modified_on__gte'] = temp
+            filters['modified_on__gte'] = temp
         if end_date:
-            end_date = datetime.strptime(end_date, '%m/%d/%Y')+timedelta(days=1)
-            filter['modified_on__lte'] = temp
+            end_date = datetime.strptime(end_date, '%m/%d/%Y') + timedelta(days=1)
+            filters['modified_on__lte'] = temp
         query_set = (WikiPage
-                     .objects(**filter)
+                     .objects(**filters)
                      .search_text(keyword)
                      .only('title', 'modified_on', 'modified_by')
                      .order_by('$text_score', '-modified_on'))
@@ -376,21 +397,44 @@ def search():
     )
 
 
-# TODO: add filters, such as user
 @blueprint.route('/changes')
 @login_required
 def changes():
+    selected_wiki_user = request.args.get('user')
+    wiki_users = WikiUser.objects.distinct('name')
+    filters = dict()
+    try:
+        selected_index = wiki_users.index(selected_wiki_user) + 1
+        filters['modified_by'] = selected_wiki_user
+    except ValueError:
+        selected_index = 0
+
     query_set = (WikiPage
-                 .objects
+                 .objects(**filters)
                  .only('title', 'modified_on', 'modified_by')
                  .order_by('-modified_on'))
     kwargs = paginate(query_set)
 
     return render_template(
         'wiki/changes.html',
+        wiki_users=wiki_users,
+        selected_index=selected_index,
         **kwargs
     )
 
+
+@blueprint.route('/pdf/<wiki_page_id>')
+@login_required
+def pdf(wiki_page_id):
+    wiki_page = (WikiPage
+                 .objects
+                 .only('title', 'html', 'modified_on', 'modified_by')
+                 .get_or_404(id=wiki_page_id))
+
+    return render_template(
+        'wiki/pdf.html',
+        wiki_page=wiki_page,
+    )
 
 @blueprint.route('/markdown')
 @login_required

@@ -16,7 +16,7 @@
   <ul class="pagination justify-content-center">
 
     {# Previous page #}
-    {% if current_page_number != 1 %}
+    {% if current_page_number > 1 %}
     {{ page_item_link(current_page_number-1, label='<span aria-hidden="true">&laquo;</span><span class="sr-only">Previous</span>', aria='Previous') }}
     {% else %}
     {{ page_item_link(current_page_number-1, label='<span aria-hidden="true">&laquo;</span><span class="sr-only">Previous</span>', status='disabled', aria='Previous') }}
@@ -43,7 +43,7 @@
     {% endif %}
 
     {# Next page #}
-    {% if current_page_number != total_page_number %}
+    {% if current_page_number < total_page_number %}
     {{ page_item_link(current_page_number+1, label='<span aria-hidden="true">&raquo;</span><span class="sr-only">Next</span>', aria='Next') }}
     {% else %}
     {{ page_item_link(current_page_number+1, label='<span aria-hidden="true">&raquo;</span><span class="sr-only">Next</span>', status='disabled', aria='Next') }}
