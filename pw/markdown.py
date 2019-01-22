@@ -1,24 +1,16 @@
-# -*- coding: utf-8 -*-
 from flask import g
-import markdown
-from markdown.inlinepatterns import Pattern
-from markdown.util import etree
-from markdown.extensions import Extension
+import re
+from mistune import Markdown, Renderer, InlineLexer
+from mistune_contrib.toc import TocMixin
 from flask_login import current_user
 
 from pw.models import WikiPage, WikiFile, WikiUser
 
-wiki_page_regex = r'\[\[(.+?)\]\]'
-wiki_file_regex = r'\[(file|image):(\d+)(@(\d+)x(\d+))?\]'
-wiki_at_regex = r'\[@(.+?)\]'
 
-# TODO: look into another markdown parse, mistune
+class WikiRenderer(TocMixin, Renderer):
 
-# Parse wiki page
-class WikiPagePattern(Pattern):
-
-    def handleMatch(self, m):
-        wiki_page_title = m.group(2)
+    def wiki_page(self, title):
+        wiki_page_title = title
         wiki_page = (WikiPage
                      .objects(title=wiki_page_title)
                      .only('title')
@@ -32,18 +24,7 @@ class WikiPagePattern(Pattern):
 
         return render_wiki_page(wiki_page.id, wiki_page_title)
 
-
-class WikiPageExtension(Extension):
-
-    def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns['wiki_page'] = WikiPagePattern(wiki_page_regex)
-
-
-# Parse wiki file & image
-class WikiFilePattern(Pattern):
-
-    def handleMatch(self, m):
-        _, _, wiki_file_type, wiki_file_id, wh, w, h = [m.group(i) for i in range(7)]
+    def wiki_file(self, wiki_file_id, wiki_file_type, w, h):
         w = w or 0
         h = h or 0
         w, h = int(w), int(h)
@@ -58,64 +39,71 @@ class WikiFilePattern(Pattern):
                 h=h
             )
 
-
-class WikiFileExtension(Extension):
-
-    def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns['wiki_file'] = WikiFilePattern(wiki_file_regex)
-
-
-# Parse `@` notification in comments
-class WikiAtPattern(Pattern):
-
-    def handleMatch(self, m):
-        username = m.group(2)
+    def wiki_at(self, username):
         u = WikiUser.objects(name=username).first()
         if u is not None:
-            el = etree.Element('strong')
-            el.text = '[@{0}]'.format(username)
             g.users_to_email.append(u)
-            el.attrib['class'] = 'wiki-user-notification'
-            return el
+            return '<strong class="wiki-user-notification">[@{0}]</strong>'.format(username)
 
 
-class WikiAtExtension(Extension):
-    def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns['wiki_at'] = WikiAtPattern(wiki_at_regex)
+class WikiInlineLexer(InlineLexer):
+
+    def enable_wiki_page(self):
+        self.rules.wiki_page = re.compile(r'\[\[(.+?)\]\]')
+        self.default_rules.insert(0, 'wiki_page')
+
+    def output_wiki_page(self, m):
+        return self.renderer.wiki_page(m.group(1))
+
+    def enable_wiki_file(self):
+        self.rules.wiki_file = re.compile(r'\[(file|image):(\d+)(@(\d+)x(\d+))?\]')
+        self.default_rules.insert(1, 'wiki_file')
+
+    def output_wiki_file(self, m):
+        _, wiki_file_type, wiki_file_id, wh, w, h = [m.group(i) for i in range(6)]
+        return self.renderer.wiki_file(wiki_file_id, wiki_file_type, w, h)
+
+    def enable_wiki_at(self):
+        self.rules.wiki_at = re.compile(r'\[@(.+?)\]')
+        self.default_rules.insert(2, 'wiki_at')
+
+    def output_wiki_at(self, m):
+        username = m.group(2)
+        return self.renderer.wiki_at(username)
 
 
-class WikiMarkdown(markdown.Markdown):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, extensions=[
-            WikiPageExtension(),
-            WikiFileExtension(),
-            WikiAtExtension(),
-            'markdown.extensions.toc',
-            'pymdownx.github'
-        ], **kwargs)
+class WikiMarkdown:
+    def __init__(self):
+        renderer = WikiRenderer()
+        inline = WikiInlineLexer(renderer)
+        # enable the feature
+        inline.enable_wiki_page()
+        inline.enable_wiki_file()
+        self.markdown = Markdown(renderer, inline=inline)
 
-    def __call__(self, markdown):
+    def __call__(self, wiki_page, markdown):
+        g.wiki_page = wiki_page
+        g.users_to_email = list()
+        self.markdown.renderer.reset_toc()
+        html = self.markdown.parse(markdown)
+
+        # workaround for when there is no headings
         try:
-            self.toc = ''
-            html = super().convert(markdown)
-        except RecursionError:
-            html = markdown
-        return self.toc, html
+            toc = self.markdown.renderer.render_toc(level=3)
+        except TypeError:
+            toc = ''
+        return toc, html
 
 
 def render_wiki_page(
     wiki_page_id,
-    wiki_page_title,
-    tostring=False
+    wiki_page_title
 ):
-    el = etree.Element('a', attrib={
-            'href': '/{0}/page/{1}'.format(g.wiki_group, wiki_page_id)
-        })
-    el.text = wiki_page_title
-    if tostring:
-        return etree.tostring(el, encoding='unicode') 
-    else:
-        return el
+    return '<a class="wiki-page" href="/{0}/page/{1}">{2}</a>'.format(
+        g.wiki_group,
+        wiki_page_id,
+        wiki_page_title
+    )
 
 
 def render_wiki_file(
@@ -123,31 +111,24 @@ def render_wiki_file(
     wiki_file_name,
     wiki_file_type,
     w=0,
-    h=0,
-    tostring=False
+    h=0
 ):
     link = '/{0}/file/{1}?filename={2}'.format(
         g.wiki_group,
         wiki_file_id,
         wiki_file_name
     )
+
     if wiki_file_type == 'image':
-        el = etree.Element('img', attrib={'src': link})
+        temp = ['src={0}'.format(link)]
         if w:
-            el.attrib['width'] = str(w)
+            temp.append('width="{0}"'.format(w))
         if h:
-            el.attrib['height'] = str(h)
+            temp.append('height="{0}"'.format(h))
+        return '<img class="wiki-file" {0} />'.format(' '.join(temp))
     elif wiki_file_type == 'file':
-        sub_el = etree.Element('img', attrib={
-            'alt': 'file icon',
-            'src': '/static/images/file-icon.png',
-            'width': '20',
-            'height': '20'
-        })
-        sub_el.tail = wiki_file_name
-        el = etree.Element('a', attrib={'href': link})
-        el.append(sub_el)
-    if tostring:
-        return etree.tostring(el, encoding='unicode') 
-    else:
-        return el
+        return (
+        '<a class="wiki-file" href="{0}">'
+        '<img alt="file icon" height="20" src="/static/images/file-icon.png" width="20" />'
+        '{1}</a>'.format(link, wiki_file_name)
+        )

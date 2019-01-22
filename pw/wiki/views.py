@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Wiki section, including wiki pages for each group."""
 from flask import (Blueprint, g, request, redirect, url_for, render_template,
-                   flash, current_app)
+                   flash, current_app, send_from_directory)
 import os
 from datetime import date, datetime, timedelta
 from flask_login import current_user
@@ -41,10 +41,9 @@ def page(wiki_page_id):
                  .get_or_404(id=wiki_page_id))
 
     if form.validate_on_submit():
-        g.wiki_page = wiki_page
-        g.users_to_email = list()
-        _, comment_html = markdown(form.textArea.data)
+        _, comment_html = markdown(wiki_page, form.textArea.data)
         new_comment = WikiComment(
+            id='{}-{}'.format(datetime.utcnow().strftime('%s.%f'), current_user.id),
             author=current_user.name,
             html=comment_html,
             md=form.textArea.data
@@ -72,22 +71,11 @@ def page(wiki_page_id):
     )
 
 
-@blueprint.route('/delete-comment')
+@blueprint.route('/delete-comment/<wiki_page_id>')
 @login_required
-def delete_comment():
-    wiki_page_id = request.args.get('wiki_page_id')
-    comment_index = request.args.get('comment_index', type=int)
-
-    # Mongodb does not have atomic update for remove array elements by index.
-    # So here it was firstly unset, and then removed as None.
-    if comment_index is not None:
-        try:
-            updates = {'unset__comments__{0}'.format(comment_index): 1}
-            WikiPage.objects(id=wiki_page_id).update_one(**updates)
-            WikiPage.objects(id=wiki_page_id).update_one(pull__comments=None)
-        except ValidationError:
-            pass
-
+def delete_comment(wiki_page_id):
+    wiki_comment_id = request.args.get('comment')
+    WikiPage.objects(id=wiki_page_id).update_one(pull__comments__id=wiki_comment_id)
     return redirect(url_for('.page', wiki_page_id=wiki_page_id))
 
 
@@ -107,9 +95,8 @@ def edit(wiki_page_id):
         if edit_form.current_version.data == wiki_page.current_version:
             diff = make_patch(wiki_page.md, edit_form.textArea.data)
             if diff:
-                g.wiki_page = wiki_page
-                toc, html = markdown(edit_form.textArea.data)
                 md = edit_form.textArea.data
+                toc, html = markdown(wiki_page, md)
                 wiki_page.update_db(diff, md, html, toc=toc)
 
             return redirect(url_for('.page', wiki_page_id=wiki_page.id))
@@ -310,10 +297,9 @@ def history(wiki_page_id):
                 revert=True
             )
 
-            g.wiki_page = wiki_page
             diff = make_patch(wiki_page.md, recovered_content)
             if diff:
-                toc, html = markdown(recovered_content)
+                toc, html = markdown(wiki_page, recovered_content)
                 wiki_page.update_db(diff, recovered_content, html, toc=toc)
             return redirect(url_for('.page', wiki_page_id=wiki_page.id))
     else:

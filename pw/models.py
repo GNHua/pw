@@ -80,7 +80,7 @@ class WikiPageVersion(db.Document):
 
 class WikiComment(db.EmbeddedDocument):
     # id = <epoch time>-<author id>
-    # id = db.StringField(required=True)
+    id = db.StringField(required=True)
     timestamp = db.DateTimeField(default=datetime.now)
     author = db.StringField()
     md = db.StringField()
