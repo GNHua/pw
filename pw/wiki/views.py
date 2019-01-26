@@ -288,16 +288,12 @@ def rename(wiki_page_id):
 @blueprint.route('/file/<int:wiki_file_id>')
 @login_required
 def file(wiki_file_id):
-    fn = request.args.get('filename')
-    if not fn:
-        wiki_file = WikiFile.objects.only('name').get_or_404(id=wiki_file_id)
-        fn = wiki_file.name
-
+    wiki_file = WikiFile.objects.only('name').get_or_404(id=wiki_file_id)
     return send_from_directory(
         os.path.join(current_app.config['UPLOAD_PATH'], g.wiki_group),
         str(wiki_file_id),
         as_attachment=True,
-        attachment_filename=fn
+        attachment_filename=wiki_file.name
     )
 
 

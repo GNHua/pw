@@ -26,7 +26,6 @@ $(document).bind("mousedown", function (e) {
 
     // Hide it
     $(".custom-menu").hide(100);
-    // selected_wiki_file = null;
   }
 });
 
@@ -38,7 +37,20 @@ $(".custom-menu li").click(function(){
   switch($(this).attr("data-action")) {
 
     // A case for each action. Your actions here
-    case "Download": selected_wiki_file.click(); break;
+    case "Download": {
+      switch(selected_wiki_file.tagName) {
+        case "A": selected_wiki_file.click(); break;
+        case "IMG": {
+          selected_wiki_file  = document.createElement('a');
+          selected_wiki_file.href = selected_wiki_file.src;
+          document.body.appendChild(selected_wiki_file);
+          selected_wiki_file.click();
+          document.body.removeChild(selected_wiki_file);
+          break;
+        }
+      }
+      break;
+    }
     case "Replace": document.getElementById('file-picker').click(); break;
   }
 
