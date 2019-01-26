@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Wiki forms."""
 from flask_wtf import FlaskForm
-from wtforms import TextAreaField, SubmitField, IntegerField, FileField, StringField
+from wtforms import TextAreaField, SubmitField, IntegerField, StringField
 from wtforms.validators import DataRequired
 
 
@@ -16,11 +16,6 @@ class CommentForm(FlaskForm):
         validators=[DataRequired()]
         )
     submit = SubmitField('Submit')
-
-
-class UploadForm(FlaskForm):
-    file = FileField('File')
-    upload = SubmitField('Upload')
 
 
 class RenameForm(FlaskForm):

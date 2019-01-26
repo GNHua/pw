@@ -27,7 +27,7 @@ def keypage_edit():
     if form.validate_on_submit():
         (WikiPage
          .objects(keypage__exists=True)
-         .update(unset__keypage=0))
+         .update(unset__keypage=1))
 
         new_titles = form.textArea.data.splitlines()
         for i, new_title in enumerate(new_titles):

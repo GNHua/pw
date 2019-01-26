@@ -11,7 +11,7 @@ from mongoengine.errors import ValidationError
 from pw.blueprints import setup_blueprint
 from pw.authentication import login_required
 from pw.extensions import db, markdown
-from pw.wiki.forms import (SearchForm, CommentForm, WikiEditForm, UploadForm,
+from pw.wiki.forms import (SearchForm, CommentForm, WikiEditForm,
                            RenameForm, HistoryRecoverForm)
 from pw.models import WikiPage, WikiPageVersion, WikiFile, WikiComment, WikiUser
 from pw.markdown import render_wiki_page, render_wiki_file
@@ -89,7 +89,6 @@ def edit(wiki_page_id):
                  .only(*fields)
                  .get_or_404(id=wiki_page_id))
     edit_form = WikiEditForm()
-    upload_form = UploadForm()
 
     if edit_form.validate_on_submit():
         if edit_form.current_version.data == wiki_page.current_version:
@@ -107,19 +106,16 @@ def edit(wiki_page_id):
     return render_template(
         'wiki/edit.html',
         wiki_page=wiki_page,
-        edit_form=edit_form,
-        upload_form=upload_form
+        edit_form=edit_form
     )
 
 
 @blueprint.route('/upload/<wiki_page_id>')
 @login_required
 def upload(wiki_page_id):
-    form = UploadForm()
     return render_template(
         'wiki/upload.html', 
-        wiki_page_id=wiki_page_id,
-        form=form
+        wiki_page_id=wiki_page_id
     )
 
 
@@ -136,11 +132,12 @@ def handle_upload():
         wiki_file = WikiFile(
             name=file.filename,
             mime_type=file.mimetype,
-            upload_by=current_user.name
+            uploaded_by=current_user.name
         )
         file.save(os.path.join(
             current_app.config['UPLOAD_PATH'],
-            g.wiki_group, str(wiki_file.id)
+            g.wiki_group,
+            str(wiki_file.id)
         ))
         # Use the position of file pointer to get file size
         wiki_file.size = file.tell()
@@ -155,7 +152,6 @@ def handle_upload():
             wiki_file.id,
             wiki_file.name,
             file_type,
-            tostring=True
         ))
 
     if upload_from_upload_page:
@@ -177,6 +173,40 @@ def handle_upload():
         return ''
 
     return file_markdown
+
+
+@blueprint.route('/replace-file', methods=['POST'])
+def replace_file():
+    form = request.form
+    file = request.files['wiki_file']
+    wiki_file_id = form.get('wiki_file_id', None)
+    wiki_file_markdown = '[file:{0}]'.format(wiki_file_id)
+
+    # save uploaded file with WikiFile.id as filename
+    file.save(os.path.join(
+        current_app.config['UPLOAD_PATH'],
+        g.wiki_group,
+        wiki_file_id
+    ))
+
+    wiki_file = WikiFile.objects(id=int(wiki_file_id)).first()
+
+    (WikiFile
+     .objects(id=int(wiki_file_id))
+     .update_one(
+         set__name=file.filename,
+         set__mime_type=file.mimetype,
+         # `size` is reserved
+         set__size__=file.tell()))
+
+    if wiki_file and wiki_file.name != file.filename:
+        for wiki_page in WikiPage.objects(md__contains=wiki_file_markdown).only('md'):
+            toc, html = markdown(wiki_page, wiki_page.md)
+            (WikiPage
+            .objects(id=wiki_page.id)
+            .update_one(set__toc=toc, set__html=html))
+
+    return ''
 
 
 @blueprint.route('/reference/<wiki_page_id>')
@@ -214,8 +244,8 @@ def rename(wiki_page_id):
             old_md = '[[{}]]'.format(wiki_page.title)
             new_md = '[[{}]]'.format(new_title)
 
-            old_html = render_wiki_page(wiki_page.id, wiki_page.title, tostring=True)
-            new_html = render_wiki_page(wiki_page.id, new_title, tostring=True)
+            old_html = render_wiki_page(wiki_page.id, wiki_page.title)
+            new_html = render_wiki_page(wiki_page.id, new_title)
 
             # update the markdown of referencing wiki page 
             wiki_referencing_pages = (
