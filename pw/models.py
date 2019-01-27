@@ -127,8 +127,9 @@ class WikiPage(db.Document):
             'set__modified_by': current_user.name,
             'push__versions': wiki_page_version
         }
-        if update_refs:
+        if toc is not None:
             updates['set__toc'] = toc
+        if update_refs:
             updates['set__refs'] = self.refs
 
         self.__class__.objects(id=self.id).update_one(**updates)

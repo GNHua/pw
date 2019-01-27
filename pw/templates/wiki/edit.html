@@ -23,11 +23,10 @@
   </head>
   <body id="toplevel">
     <div id="in"><form method="POST">
-      {{ edit_form.csrf_token }}
-      {% set f = edit_form.textArea.process_data(wiki_page.md) %}
-      {{ edit_form.textArea(id='code') }}
-      {{ edit_form.submit(id='save', class_='hidden') }}
-      {{ edit_form.current_version(value=wiki_page.current_version, readonly=true, class_='hidden') }}
+      {{ form.csrf_token }}
+      {{ form.textArea(id='code') }}
+      {{ form.submit(id='save', class_='hidden') }}
+      {{ form.current_version(readonly=true, class_='hidden') }}
     </form></div>
     <div id="out" class="markdown-body"></div>
     <div id="navbar">

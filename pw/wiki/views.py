@@ -91,13 +91,16 @@ def edit(wiki_page_id):
                  .no_dereference()
                  .only(*fields)
                  .get_or_404(id=wiki_page_id))
-    edit_form = WikiEditForm()
+    form = WikiEditForm(
+        textArea=wiki_page.md,
+        current_version=wiki_page.current_version
+    )
 
-    if edit_form.validate_on_submit():
-        if edit_form.current_version.data == wiki_page.current_version:
-            diff = make_patch(wiki_page.md, edit_form.textArea.data)
+    if form.validate_on_submit():
+        if form.current_version.data == wiki_page.current_version:
+            md = form.textArea.data
+            diff = make_patch(wiki_page.md, md)
             if diff:
-                md = edit_form.textArea.data
                 toc, html = markdown(wiki_page, md)
                 wiki_page.update_db(diff, md, html, toc=toc)
 
@@ -109,7 +112,7 @@ def edit(wiki_page_id):
     return render_template(
         'wiki/edit.html',
         wiki_page=wiki_page,
-        edit_form=edit_form
+        form=form
     )
 
 
