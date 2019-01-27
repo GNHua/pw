@@ -54,14 +54,17 @@ def page(wiki_page_id):
          .update_one(push__comments=new_comment))
 
         user_emails = [u.email for u in g.users_to_email]
-        msg = '{0} ({1}) mentioned you at <a href="{2}#wiki-comment-box">{3}</a>'\
-            .format(current_user.name, current_user.email, request.base_url, wiki_page.title)
+        msg = '{0} ({1}) mentioned you at <a href="{2}">{3}</a>'\
+            .format(
+                current_user.name,
+                current_user.email,
+                request.base_url,
+                wiki_page.title)
         send_email(user_emails, 'You are mentioned', msg)
 
         return redirect(url_for(
-            '.page', 
-            wiki_page_id=wiki_page_id, 
-            _anchor='wiki-comment-box'
+            '.page',
+            wiki_page_id=wiki_page_id
         ))
 
     return render_template(
@@ -200,11 +203,18 @@ def replace_file():
          set__size__=file.tell()))
 
     if wiki_file and wiki_file.name != file.filename:
+        # re-render the wiki page markdown with replace file
         for wiki_page in WikiPage.objects(md__contains=wiki_file_markdown).only('md'):
             toc, html = markdown(wiki_page, wiki_page.md)
             (WikiPage
             .objects(id=wiki_page.id)
             .update_one(set__toc=toc, set__html=html))
+
+        # re-render the wiki comment markdown with replace file
+        for wiki_page in WikiPage.objects(comments__md__contains=wiki_file_markdown).only('comments'):
+            for comment in wiki_page.comments:
+                _, comment.html = markdown(wiki_page, comment.md)
+            WikiPage.objects(id=wiki_page.id).update_one(comments=wiki_page.comments)
 
     return ''
 
@@ -251,7 +261,7 @@ def rename(wiki_page_id):
             wiki_referencing_pages = (
                 WikiPage
                 .objects(refs__contains=wiki_page_id)
-                .only('md', 'html')
+                .only('md', 'html', 'comments')
                 .all()
             )
 
@@ -264,6 +274,13 @@ def rename(wiki_page_id):
                  .update_one(
                      set__md=new_md_content,
                      set__html=new_html_content))
+
+            # update renamed page title in comments
+            for wp in WikiPage.objects(comments__md__contains=old_md).only('comments'):
+                for comment in wp.comments:
+                    comment.md = comment.md.replace(old_md, new_md)
+                    comment.html = comment.html.replace(old_html, new_html)
+                WikiPage.objects(id=wp.id).update_one(comments=wp.comments)
 
             # update the diff of related wiki page versions
             for pv in WikiPageVersion.objects.search_text(old_md).all():
